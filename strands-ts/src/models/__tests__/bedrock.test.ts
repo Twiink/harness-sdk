@@ -1148,6 +1148,35 @@ describe('BedrockModel', () => {
         expect('additionalProperties' in inputSchema).toBe(false)
       })
 
+      it('inlines escaped references in strict tool requests', async () => {
+        const provider = new BedrockModel({ strictTools: true })
+        const definition = { type: 'object', properties: { city: { type: 'string' } } }
+        const inputSchema = {
+          type: 'object',
+          properties: { address: { $ref: '#/$defs/Address~1Home~0', description: 'Delivery address' } },
+          $defs: { 'Address/Home~': definition },
+        }
+        const messages = [new Message({ role: 'user', content: [new TextBlock('Hello')] })]
+
+        await collectIterator(provider.stream(messages, { toolSpecs: [toolSpec(inputSchema)] }))
+
+        expect(lastTools()[0]!.toolSpec).toEqual({
+          name: 'calc',
+          description: 'Calculator',
+          strict: true,
+          inputSchema: {
+            json: {
+              type: 'object',
+              properties: {
+                address: { ...definition, description: 'Delivery address', additionalProperties: false },
+              },
+              $defs: { 'Address/Home~': { ...definition, additionalProperties: false } },
+              additionalProperties: false,
+            },
+          },
+        })
+      })
+
       it('preserves an existing additionalProperties: true', () => {
         const provider = new BedrockModel({ strictTools: true })
         const messages = [new Message({ role: 'user', content: [new TextBlock('Hello')] })]

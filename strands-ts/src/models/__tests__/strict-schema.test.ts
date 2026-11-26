@@ -121,6 +121,29 @@ describe('ensureStrictJsonSchema', () => {
     expect(properties['a']).not.toBe(properties['b'])
   })
 
+  it.each([
+    ['Address/Home', 'Address~1Home'],
+    ['Address~Home', 'Address~0Home'],
+    ['Address~1Home', 'Address~01Home'],
+    ['Address', 'Address'],
+  ])('resolves escaped JSON Pointer tokens for %s', (name, token) => {
+    const definition = { type: 'object', properties: { city: { type: 'string' } } }
+    const original = schema({
+      type: 'object',
+      properties: { item: { $ref: `#/$defs/${token}`, description: 'Delivery address' } },
+      $defs: { [name]: definition },
+    })
+    const snapshot = deepCopy(original)
+
+    expect(ensureStrictJsonSchema(original)).toEqual({
+      type: 'object',
+      properties: { item: { ...definition, description: 'Delivery address', additionalProperties: false } },
+      $defs: { [name]: { ...definition, additionalProperties: false } },
+      additionalProperties: false,
+    })
+    expect(original).toEqual(snapshot)
+  })
+
   it('recurses into array items, anyOf, and allOf', () => {
     const result = ensureStrictJsonSchema(
       schema({

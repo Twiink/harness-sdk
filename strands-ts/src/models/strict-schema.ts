@@ -143,7 +143,8 @@ function resolveRef(root: SchemaNode, ref: string): SchemaNode | null {
 
   const path = ref.slice(2).split('/')
   let current: JSONValue = root
-  for (const key of path) {
+  for (const token of path) {
+    const key = token.replace(/~1/g, '/').replace(/~0/g, '~')
     if (!isRecord(current) || !Object.hasOwn(current, key)) {
       logger.warn(`ref=<${ref}> | failed to resolve $ref path`)
       return null
